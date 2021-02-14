@@ -17,9 +17,9 @@ bot.
 import logging
 import uuid
 
-import telegram
+from things import add_thing
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 # Enable logging
 logging.basicConfig(
@@ -53,6 +53,15 @@ def get_photo(update: Update, context: CallbackContext) -> None:
     context.bot.get_file(photos[-1]).download("./photos/" + file_name + ".jpg")
 
 
+def add_thing1(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Как назовём эту вещь?")
+    return PHOTO
+
+
+def add_photo1(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Hi")
+
+
 def main():
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
@@ -64,10 +73,17 @@ def main():
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
+    dispatcher.add_handler(CommandHandler("добавить", help_command))
 
     # on noncommand i.e message - echo the message on Telegram
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
     dispatcher.add_handler(MessageHandler(Filters.photo, get_photo))
+    conv_handler = ConversationHandler(entry_points=[ConversationHandler("добавить", add_thing1)],
+                                       states={
+                                           PHOTO: [MessageHandler(Filters.photo, add_photo)]
+                                       },
+                                       fallbacks=[])
+    dispatcher.add_handler(conv_handler)
 
     # Start the Bot
     updater.start_polling()
