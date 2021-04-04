@@ -16,10 +16,11 @@ bot.
 
 import logging
 import psycopg2
-from psycopg2 import Error, sql
+from psycopg2 import Error, errors
 from psycopg2._psycopg import cursor
 from psycopg2.sql import SQL
 
+import sql
 import things
 from things import add_thing, add_photo, add_cost, add_name, add_discount, accept_thing
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
@@ -27,9 +28,10 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
     CallbackQueryHandler
 
 # Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
+logging.basicConfig(filename='log.txt',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO
+                    )
 
 logger = logging.getLogger(__name__)
 
@@ -49,21 +51,14 @@ def welcome(update: Update, context: CallbackContext) -> None:
     user = update.callback_query.from_user
     update.callback_query.from_user.send_message("Приятно познакомиться %s" % user.first_name)
     try:
-        # Подключение к существующей базе данных
-        connection = psycopg2.connect(user="postgres",
-                                      # пароль, который указали при установке PostgreSQL
-                                      password="15021994",
-                                      host="127.0.0.1",
-                                      port="5432",
-                                      database="postgres")
-        insert_query = SQL("INSERT INTO users (username, first_name, last_name) VALUES (%s, %s, %s);")
-        print(sql.SQL(insert_query), (user.username, user.first_name, user.last_name,))
-        cursor.execute(insert_query, (user.username, user.first_name, user.last_name,))
-        connection.commit()
-        print("1 запись успешно вставлена")
-
+        sql.registration(user.id, user.username, user.first_name, user.last_name)
     except (Exception, Error) as error:
-        print("Ошибка при работе с PostgreSQL", error)
+        if error.pgcode == '23505':
+            update.callback_query.from_user.send_message("%s, вы уже зарегестрированы." % user.first_name)
+        else:
+            print("Ошибка при работе с PostgreSQL:\n", error)
+            print(error.pgcode)
+            logger.error(error)
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
